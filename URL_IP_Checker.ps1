@@ -283,7 +283,7 @@ foreach ($ip in $otherSearches){
             Write-Host "Actor name: $($result.actor)"
             Write-Host "Actor description: $($result.actor_description)"
             Write-Host ""
-            $crowdStrikeWorksheet.Cells.Item($nextRow, 1) = $result
+            $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $result
             $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
         }
     }
