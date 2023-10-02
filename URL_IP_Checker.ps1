@@ -3,9 +3,9 @@ $vtAPI = "VirusTotalAPI"
 $abuseAPI = "abuseIPDBAPI"
 $shodanAPI = "shodanAPI"
 
-$outputXLSX = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
-$outputCSV = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
-$otherSearches = "C:\path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$outputXLSX = "C:\Path\To\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+$outputCSV = "C:\Path\To\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$otherSearches = "C:\Path\To\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
 $source_file = Read-Host "What's the path to the input file?"
@@ -201,7 +201,7 @@ foreach ($ip in $otherSearches){
     
     #Start adding things to the xlsx document
     #Find the last row used in the worksheet
-    $lastRow = $worksheet.Cells.Range("A1048576").End(-4162).Row
+    $lastRow = $abuseWorksheet.Cells.Range("A1048576").End(-4162).Row
 
     #Increment the row number by one to get the next empty row
     $nextRow = $lastRow +1
@@ -226,6 +226,78 @@ Write-Host ($response)
 $abuseRange = $abuseWorksheet.UsedRange
 $abuseRange.AutoFilter()
 $abuseRange.Columns.AutoFit()
+
+#CrowdStrike stuff
+$client_id = "Your CS Clinet ID"
+$client_secret = "Your CS Client Secoret"
+
+# Use the US-2 region endpoint
+$endpoint = "https://api.us-2.crowdstrike.com/intel/queries/indicators/v1"
+
+# Use the US-2 region token endpoint
+$token_endpoint = "https://api.us-2.crowdstrike.com/oauth2/token"
+$grant_type = "client_credentials"
+
+# Invoke the token request and get the response for CS
+$token_response = Invoke-RestMethod -Uri $token_endpoint -Method POST -Body @{
+    "client_id" = $client_id
+    "client_secret" = $client_secret
+    "grant_type" = $grant_type
+}
+
+# Extract the access token from the response
+$access_token = $token_response.access_token
+
+# Define the authorization header with the access token
+$header = @{
+    "Authorization" = "Bearer $access_token"
+}
+
+#Get CrowdStrike worksheet
+$crowdStrikeWorksheet = $workbook.Worksheets.Item(3)
+$crowdStrikeWorksheet.name = "CrowdStrike"
+$crowdStrikeColumn = 1
+$lastCrowdStrikeRow = $crowdStrikeWorksheet.Cells.Range("A1048576").End(-4162).Row
+
+#Increment the row number by one to get the next empty row
+$nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+
+#Run the red results through CS now
+foreach ($ip in $otherSearches){
+
+    $params = @{
+        type= "ip_address.$($ip)"
+        "limit" = 10 # You can change this to adjust the number of results
+    }
+
+    # Invoke the web request and get the response
+    $response = Invoke-WebRequest -Uri $endpoint -Method Get -Body $params -Headers $header
+
+    # Convert the response to JSON object
+    $json = $response.Content | ConvertFrom-Json
+
+    # Check if there are any results
+    if ($json.meta.pagination.total -gt 0) {
+        # Loop through the results and print the actor names and descriptions
+        foreach ($result in $json.resources) {
+            Write-Host "Actor name: $($result.actor)"
+            Write-Host "Actor description: $($result.actor_description)"
+            Write-Host ""
+            $crowdStrikeWorksheet.Cells.Item($nextRow, 1) = $result
+            $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+        }
+    }
+    else {
+        # No results found
+        Write-Host "No actors associated with the IP address $ip"
+    }
+}
+
+#Finishing Touches
+#auto-size and add filters to the columns
+$crowdStrikeRange = $crowdStrikeWorksheet.UsedRange
+$crowdStrikeRange.AutoFilter()
+$crowdStrikeRange.Columns.AutoFit()
 
 #Close and quit excel
 $workbook.Close()
