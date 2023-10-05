@@ -9,4 +9,5 @@ The script then takes all the information and creates a color coded report, with
 # Future Plans:
 
 1: Find a better solution than saving API credentials directly in the script
+
 2: Find other OSINT tools to run through
