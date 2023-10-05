@@ -138,7 +138,8 @@ $red = @()
 $rows = $worksheet.UsedRange.Rows.Count
 for ($row = 2; $row -le $rows; $row ++){
     $rowDValue = $worksheet.Cells.Item($row, 4).Value2
-    if ($rowDValue -gt 9){
+    #This first one also sets the IP addresses for later searches. Adjust values as necessary
+    if ($rowDValue -gt 15){
         $worksheet.Cells.Item($row, 1).EntireRow.Interior.ColorIndex = 3 #red
         Add-Content -Path $otherSearches -Value $worksheet.Cells.Item($row, 2).Value2
     } elseif ($rowDValue -gt 5){
