@@ -351,14 +351,14 @@ $shodanHeaders.Add("key", "$($shodanAPI)")
 
 $shodanURL = "https://api.shodan.io/shodan/host/"
 
-#Get CrowdStrike worksheet
+#Get Shodan worksheet
 
 $lastSheet = $workbook.WorkSheets($workbook.WorkSheets.Count)
 $shodanWorksheet = $workbook.Worksheets.Add($lastSheet)
 $shodanWorksheet.name = "Shodan"
 $lastSheet.Move($shodanWorksheet)
 
-#Sets up Crowdstrike Sheet Headers
+#Sets up Shodan Sheet Headers
 $shodanHeader_information = "IP"+","+"Open Ports"+","+"Associated Domains"
 #Set up headers from the csv in a way that will work for the xlsx
 $shodanHeader_data = $crowdStrikeHeader_information -split ","
