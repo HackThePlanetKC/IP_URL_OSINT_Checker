@@ -3,12 +3,14 @@ $vtAPI = "vtAPI"
 $abuseAPI = "abuseAPI"
 $shodanAPI = "shodanAPI"
 
-$outputXLSX = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+$outputXLSX = "C:\path\to\Report $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+
+#placeholders, just used to store the data before building the actual report
 $outputCSV = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 $otherSearches = "C:\path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
-$source_file = Read-Host "What's the path to the input file?"#
+$source_file = Read-Host "What's the path to the input file?"
 $sources = Get-Content $source_file
 
 # Define a regex pattern for IP address
@@ -337,6 +339,50 @@ foreach ($ip in $redSearches){
 $crowdStrikeRange = $crowdStrikeWorksheet.UsedRange
 $crowdStrikeRange.AutoFilter()
 $crowdStrikeRange.Columns.AutoFit()
+
+#Start Shodan Stuff
+$shodanHeaders=@{}
+$shodanHeaders.Add("key", "$($shodanAPI)")
+
+$shodanURL = "https://api.shodan.io/shodan/host/"
+
+#Get CrowdStrike worksheet
+
+$lastSheet = $workbook.WorkSheets($workbook.WorkSheets.Count)
+$shodanWorksheet = $workbook.Worksheets.Add($lastSheet)
+$shodanWorksheet.name = "Shodan"
+$lastSheet.Move($shodanWorksheet)
+
+#Sets up Crowdstrike Sheet Headers
+$shodanHeader_information = "IP"+","+"Open Ports"
+#Set up headers from the csv in a way that will work for the xlsx
+$shodanHeader_data = $crowdStrikeHeader_information -split ","
+
+#Sets the headers in the Shodan worksheet
+$column = 1
+foreach ($head in $shodanHeader_data){
+    $shodanWorksheet.Cells.Item(1, $column) = $head
+    $column++
+}
+
+#Start Shodan Scanning
+foreach ($ip in $redSearches){
+    #Find the last row used in the worksheet
+    $lastShodanRow = $shodanWorksheet.Cells.Range("A1048576").End(-4162).Row
+
+    #Increment the row number by one to get the next empty row
+    $nextShodanRow = $lastShodanRow +1
+
+    $response = Invoke-WebRequest -Uri "$($shodanURL)$($ip)" -UseBasicParsing -Method GET -Headers $shodanHeaders
+    $shodanParsed = $response | ConvertFrom-Json
+    $shodanWorksheet.Cells.Item($nextShodanRow, 1) = $shodanParsed.ip_str
+    $shodanWorksheet.Cells.Item($nextShodanRow, 2) = $shodanParsed.ports
+}
+
+#auto-size and add filters to the columns
+$shodanRange = $shodanWorksheet.UsedRange
+$shodanRange.AutoFilter()
+$shodanRange.Columns.AutoFit()
 
 #Close and quit excel
 #Save the workboox as XLSX
