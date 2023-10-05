@@ -359,9 +359,9 @@ $shodanWorksheet.name = "Shodan"
 $lastSheet.Move($shodanWorksheet)
 
 #Sets up Crowdstrike Sheet Headers
-$shodanHeader_information = "IP"+","+"Open Ports"
+$shodanHeader_information = "IP"+","+"Open Ports"+","+"Associated Domains"
 #Set up headers from the csv in a way that will work for the xlsx
-$shodanHeader_data = $shodanHeader_information -split ","
+$shodanHeader_data = $crowdStrikeHeader_information -split ","
 
 #Sets the headers in the Shodan worksheet
 $column = 1
@@ -382,8 +382,12 @@ foreach ($ip in $redSearches){
     $shodanParsed = $response | ConvertFrom-Json
     $shodanWorksheet.Cells.Item($nextShodanRow, 1) = $shodanParsed.ip_str
     $shodanWorksheet.Cells.Item($nextShodanRow, 2) = $shodanParsed.ports
+    $column = 3
+            foreach ($value in $shodanParsed.domains){
+                $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, $column) = $value
+                $column++
+            }
 }
-
 #auto-size and add filters to the columns
 $shodanRange = $shodanWorksheet.UsedRange
 $shodanRange.AutoFilter()
