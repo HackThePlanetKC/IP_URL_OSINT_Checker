@@ -1,14 +1,16 @@
 #Set some globals
-$vtAPI = "VirusTotalAPI"
-$abuseAPI = "abuseIPDBAPI"
+$vtAPI = "vtAPI"
+$abuseAPI = "abuseAPI"
 $shodanAPI = "shodanAPI"
 
-$outputXLSX = "C:\Path\To\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
-$outputCSV = "C:\Path\To\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
-$otherSearches = "C:\Path\To\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+
+$outputXLSX = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+$outputCSV = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$otherSearches = "C:\path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
-$source_file = Read-Host "What's the path to the input file?"
+$source_file = Read-Host "What's the path to the input file?"#
+#$source_file = "180.101.88.247"
 $sources = Get-Content $source_file
 
 # Define a regex pattern for IP address
@@ -131,10 +133,10 @@ $red = @()
 $rows = $worksheet.UsedRange.Rows.Count
 for ($row = 2; $row -le $rows; $row ++){
     $rowDValue = $worksheet.Cells.Item($row, 4).Value2
-    if ($rowDValue -gt 30){
+    if ($rowDValue -gt 9){
         $worksheet.Cells.Item($row, 1).EntireRow.Interior.ColorIndex = 3 #red
-        Add-Content -Path $otherSearches -Value $worksheet.Cells.Item($row, 2)
-    } elseif ($rowDValue -gt 15){
+        Add-Content -Path $otherSearches -Value $worksheet.Cells.Item($row, 2).Value2
+    } elseif ($rowDValue -gt 5){
         $worksheet.Cells.Item($row, 1).EntireRow.Interior.ColorIndex = 6 #yellow
     } elseif ($rowDValue -lt 5){
         $worksheet.Cells.Item($row, 1).EntireRow.Interior.ColorIndex = 4 #green
@@ -162,8 +164,6 @@ $range = $worksheet.Range('A2','MV' + $rows)
 $range.Sort($worksheet.Range('MV2'),1)
 $worksheet.Range(‘MV2’, ‘MV’ + $rows).Clear()
 
-#Save the workboox as XLSX
-$workbook.SaveAs($outputXLSX, 51)
 
 #Transistion period
 Write-Host("`n`nVirusTotal document finished, beginning other scans")
@@ -171,14 +171,19 @@ Write-Host("`n`nVirusTotal document finished, beginning other scans")
 #Run the red results through AbuseIPDB
 Write-Host("`nScanning through AbuseIPDB")
 
+$redSearches = Get-Content $otherSearches
+
 $abuseHeaders =- @{
     "Key" = $vtAPI
     "Accept" = "application/json"
 }
 
 #Get second worksheet
-$abuseWorksheet = $workbook.Worksheets.Item(2)
+
+$lastSheet = $workbook.WorkSheets($workbook.WorkSheets.Count)
+$abuseWorksheet = $workbook.Worksheets.Add($lastSheet)
 $abuseWorksheet.name = "abuseIPDB"
+$lastSheet.Move($abuseWorksheet)
 
 $abuseHeader_information = "IP Address"+","+"Country Name" +","+"Country Code"+","+"Usage Type"+","+"ISP"+","+"Domain"
 #Set up headers from the csv in a way that will work for the xlsx
@@ -191,7 +196,7 @@ foreach ($head in $abuseHeader_data){
     $column++
 }
 
-foreach ($ip in $otherSearches){
+foreach ($ip in $redSearches){
     $query = @{
         "ipAddress" = $ip
         "maxAgeInDays" = 90
@@ -201,10 +206,10 @@ foreach ($ip in $otherSearches){
     
     #Start adding things to the xlsx document
     #Find the last row used in the worksheet
-    $lastRow = $abuseWorksheet.Cells.Range("A1048576").End(-4162).Row
+    $lastAbuseRow = $abuseWorksheet.Cells.Range("A1048576").End(-4162).Row
 
     #Increment the row number by one to get the next empty row
-    $nextRow = $lastRow +1
+    $nextAbuseRow = $lastAbuseRow +1
 
     $abuseResults = $response | ConvertFrom-Json
 
@@ -216,7 +221,7 @@ foreach ($ip in $otherSearches){
     #loop through the array and assign each value to a cell in the worksheet
     $column = 1
     foreach ($value in $abuseArray){
-            $abuseWorksheet.Cells.Item($nextRow, $column) = $value
+            $abuseWorksheet.Cells.Item($nextAbuseRow, $column) = $value
             $column++
    }
 Write-Host ($response)
@@ -228,8 +233,8 @@ $abuseRange.AutoFilter()
 $abuseRange.Columns.AutoFit()
 
 #CrowdStrike stuff
-$client_id = "Your CS Clinet ID"
-$client_secret = "Your CS Client Secoret"
+$client_id = "clientID"
+$client_secret = "clientSecret"
 
 # Use the US-2 region endpoint
 $endpoint = "https://api.us-2.crowdstrike.com/intel/queries/indicators/v1"
@@ -254,20 +259,23 @@ $header = @{
 }
 
 #Get CrowdStrike worksheet
-$crowdStrikeWorksheet = $workbook.Worksheets.Item(3)
+
+$lastSheet = $workbook.WorkSheets($workbook.WorkSheets.Count)
+$crowdStrikeWorksheet = $workbook.Worksheets.Add($lastSheet)
 $crowdStrikeWorksheet.name = "CrowdStrike"
-$crowdStrikeColumn = 1
-$lastCrowdStrikeRow = $crowdStrikeWorksheet.Cells.Range("A1048576").End(-4162).Row
+$lastSheet.Move($abuseWorksheet)
 
 #Increment the row number by one to get the next empty row
 $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
 
 #Run the red results through CS now
-foreach ($ip in $otherSearches){
+foreach ($ip in $redSearches){
 
+    #Find the last row used in the worksheet
+    $lastCrowdStrikeRow = $crowdStrikeWorksheet.Cells.Range("A1048576").End(-4162).Row
     $params = @{
         type= "ip_address.$($ip)"
-        "limit" = 10 # You can change this to adjust the number of results
+        #"limit" = 10 # You can change this to adjust the number of results
     }
 
     # Invoke the web request and get the response
@@ -283,13 +291,15 @@ foreach ($ip in $otherSearches){
             Write-Host "Actor name: $($result.actor)"
             Write-Host "Actor description: $($result.actor_description)"
             Write-Host ""
-            $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $result
+            $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $json
             $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
         }
     }
     else {
         # No results found
         Write-Host "No actors associated with the IP address $ip"
+        $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = "No actors associated with the IP address $($ip)"
+        $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
     }
 }
 
@@ -300,5 +310,7 @@ $crowdStrikeRange.AutoFilter()
 $crowdStrikeRange.Columns.AutoFit()
 
 #Close and quit excel
+#Save the workboox as XLSX
+$workbook.SaveAs($outputXLSX, 51)
 $workbook.Close()
 $xlsx_workbook.Quit()
