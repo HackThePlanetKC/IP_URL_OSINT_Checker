@@ -69,7 +69,7 @@ foreach($source in $sources){
     $check = $test.error.code
 
     #Check for a quota exceeded error
-    if ($check -eq 429){
+    if ($check -eq "QuotaExceededError"){
         $worksheet.Cells.Item($nextRow, 1) = "QUOTA EXCEEDED"
         #Highlight this row magenta to stand out
         $worksheet.Cells.Item($nextRow, 1).EntireRow.Interior.ColorIndex = 7 #magenta
