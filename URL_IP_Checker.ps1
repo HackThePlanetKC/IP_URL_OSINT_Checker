@@ -8,11 +8,11 @@ $client_id = "client_id"
 $client_secret = "client_secret"
 
 #Actual report
-$outputXLSX = "C:\Path\to\Report $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+$outputXLSX = "C:\Path\To\Report $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
 
 #placeholders, just used to store the data before building the actual report
-$outputCSV = "C:\Path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
-$otherSearches = "C:\Path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$outputCSV = "C:\Path\To\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$otherSearches = "C:\Path\To\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
 $source_file = Read-Host "What's the path to the input file?"
@@ -388,6 +388,7 @@ foreach ($ip in $redSearches){
                 $column++
             }
 }
+
 #auto-size and add filters to the columns
 $shodanRange = $shodanWorksheet.UsedRange
 $shodanRange.AutoFilter()
