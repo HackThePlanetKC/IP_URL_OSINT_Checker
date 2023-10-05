@@ -383,10 +383,10 @@ foreach ($ip in $redSearches){
     $shodanWorksheet.Cells.Item($nextShodanRow, 1) = $shodanParsed.ip_str
     $shodanWorksheet.Cells.Item($nextShodanRow, 2) = $shodanParsed.ports
     $column = 3
-            foreach ($value in $shodanParsed.domains){
-                $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, $column) = $value
-                $column++
-            }
+    foreach ($value in $shodanParsed.domains){
+        $shodanWorksheet.Cells.Item($nextShodanRow, $column) = $value                
+        $column++
+    }
 }
 
 #auto-size and add filters to the columns
