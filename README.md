@@ -6,7 +6,7 @@ It then takes the saved results and runs them through AbuseIPDB for some whois i
 
 The script then takes all the information and creates a color coded report, with a separate sheet for each source, with a current Date/Time stamp to keep things organized.
 
-#Future Plans:
+# Future Plans:
 
 1: Find a better solution than saving API credentials directly in the script
 2: Find other OSINT tools to run through
