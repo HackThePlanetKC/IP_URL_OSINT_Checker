@@ -361,7 +361,7 @@ $lastSheet.Move($shodanWorksheet)
 #Sets up Crowdstrike Sheet Headers
 $shodanHeader_information = "IP"+","+"Open Ports"
 #Set up headers from the csv in a way that will work for the xlsx
-$shodanHeader_data = $crowdStrikeHeader_information -split ","
+$shodanHeader_data = $shodanHeader_information -split ","
 
 #Sets the headers in the Shodan worksheet
 $column = 1
