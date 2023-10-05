@@ -3,14 +3,12 @@ $vtAPI = "vtAPI"
 $abuseAPI = "abuseAPI"
 $shodanAPI = "shodanAPI"
 
-
 $outputXLSX = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
 $outputCSV = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 $otherSearches = "C:\path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
 $source_file = Read-Host "What's the path to the input file?"#
-#$source_file = "180.101.88.247"
 $sources = Get-Content $source_file
 
 # Define a regex pattern for IP address
@@ -171,8 +169,6 @@ Write-Host("`n`nVirusTotal document finished, beginning other scans")
 #Run the red results through AbuseIPDB
 Write-Host("`nScanning through AbuseIPDB")
 
-$redSearches = Get-Content $otherSearches
-
 $abuseHeaders =- @{
     "Key" = $vtAPI
     "Accept" = "application/json"
@@ -195,6 +191,8 @@ foreach ($head in $abuseHeader_data){
     $abuseWorksheet.Cells.Item(1, $column) = $head
     $column++
 }
+
+$redSearches = Get-Content $otherSearches
 
 foreach ($ip in $redSearches){
     $query = @{
@@ -233,8 +231,8 @@ $abuseRange.AutoFilter()
 $abuseRange.Columns.AutoFit()
 
 #CrowdStrike stuff
-$client_id = "clientID"
-$client_secret = "clientSecret"
+$client_id = "client_id"
+$client_secret = "client_secret"
 
 # Use the US-2 region endpoint
 $endpoint = "https://api.us-2.crowdstrike.com/intel/queries/indicators/v1"
@@ -263,16 +261,29 @@ $header = @{
 $lastSheet = $workbook.WorkSheets($workbook.WorkSheets.Count)
 $crowdStrikeWorksheet = $workbook.Worksheets.Add($lastSheet)
 $crowdStrikeWorksheet.name = "CrowdStrike"
-$lastSheet.Move($abuseWorksheet)
+$lastSheet.Move($crowdStrikeWorksheet)
 
-#Increment the row number by one to get the next empty row
-$nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+#Sets up Crowdstrike Sheet Headers
+$crowdStrikeHeader_information = "IP"+","+"Actor Name"+","+"Actor Description"
+#Set up headers from the csv in a way that will work for the xlsx
+$crowdStrikeHeader_data = $crowdStrikeHeader_information -split ","
+
+#Sets the headers in the CrowdStrike worksheet
+$column = 1
+foreach ($head in $crowdStrikeHeader_data){
+    $crowdStrikeWorksheet.Cells.Item(1, $column) = $head
+    $column++
+}
 
 #Run the red results through CS now
 foreach ($ip in $redSearches){
 
     #Find the last row used in the worksheet
     $lastCrowdStrikeRow = $crowdStrikeWorksheet.Cells.Range("A1048576").End(-4162).Row
+
+    #Increment the row number by one to get the next empty row
+    $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+
     $params = @{
         type= "ip_address.$($ip)"
         #"limit" = 10 # You can change this to adjust the number of results
@@ -288,17 +299,35 @@ foreach ($ip in $redSearches){
     if ($json.meta.pagination.total -gt 0) {
         # Loop through the results and print the actor names and descriptions
         foreach ($result in $json.resources) {
+
+            #Find the last row used in the worksheet
+            $lastCrowdStrikeRow = $crowdStrikeWorksheet.Cells.Range("A1048576").End(-4162).Row
+
+            #Increment the row number by one to get the next empty row
+            $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+
             Write-Host "Actor name: $($result.actor)"
             Write-Host "Actor description: $($result.actor_description)"
             Write-Host ""
-            $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $json
-            $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
+            $crowdStrikeData = $result.actor +","+ $result.actor_description
+
+            #Split abuseData into an array
+            $crowdStrikeArray = $crowdStrikeData -split ","
+
+            #Write the crowdStrike data into each cell on the row
+            $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $ip
+            $column = 2
+            foreach ($value in $abuseArray){
+                $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, $column) = $value
+                $column++
+            }
         }
     }
     else {
         # No results found
         Write-Host "No actors associated with the IP address $ip"
-        $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = "No actors associated with the IP address $($ip)"
+        $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 1) = $ip
+        $crowdStrikeWorksheet.Cells.Item($nextCrowdStrikeRow, 2) = "No actors associated with this IP address"
         $nextCrowdStrikeRow = $lastCrowdStrikeRow +1
     }
 }
