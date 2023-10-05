@@ -3,11 +3,16 @@ $vtAPI = "vtAPI"
 $abuseAPI = "abuseAPI"
 $shodanAPI = "shodanAPI"
 
-$outputXLSX = "C:\path\to\Report $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
+#CrowdStrike stuff
+$client_id = "client_id"
+$client_secret = "client_secret"
+
+#Actual report
+$outputXLSX = "C:\Path\to\Report $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).xlsx"
 
 #placeholders, just used to store the data before building the actual report
-$outputCSV = "C:\path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
-$otherSearches = "C:\path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$outputCSV = "C:\Path\to\output $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
+$otherSearches = "C:\Path\to\Searches $(Get-Date -Format yyyy-MM-dd_HH-mm-ss).csv"
 
 #Asks the user for the file path to the input txt file, relative path can be used if running from the same directory
 $source_file = Read-Host "What's the path to the input file?"
@@ -224,7 +229,7 @@ foreach ($ip in $redSearches){
             $abuseWorksheet.Cells.Item($nextAbuseRow, $column) = $value
             $column++
    }
-Write-Host ($response)
+#Write-Host ($response)
 }
 
 #auto-size and add filters to the columns
@@ -232,9 +237,7 @@ $abuseRange = $abuseWorksheet.UsedRange
 $abuseRange.AutoFilter()
 $abuseRange.Columns.AutoFit()
 
-#CrowdStrike stuff
-$client_id = "client_id"
-$client_secret = "client_secret"
+Write-Host("`nScanning through CrowdStrike")
 
 # Use the US-2 region endpoint
 $endpoint = "https://api.us-2.crowdstrike.com/intel/queries/indicators/v1"
@@ -339,6 +342,8 @@ foreach ($ip in $redSearches){
 $crowdStrikeRange = $crowdStrikeWorksheet.UsedRange
 $crowdStrikeRange.AutoFilter()
 $crowdStrikeRange.Columns.AutoFit()
+
+Write-Host("`nScanning through Shodan")
 
 #Start Shodan Stuff
 $shodanHeaders=@{}
